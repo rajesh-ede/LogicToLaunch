@@ -2,7 +2,7 @@ import java.util.*;
 
 class Methods7{
 
-    static  Methods7ethods7 obj = new Methods7();;
+    static  Methods7 obj = new Methods7();;
     static Scanner sc = new Scanner(System.in);
 
     static void M1(int val){
@@ -22,7 +22,7 @@ class Methods7{
 
     }
     public static void main(String[] args){
-
+        
         int val = sc.nextInt();
         M1(val);
         char ch  = obj.M2();
