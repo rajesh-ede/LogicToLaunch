@@ -25,10 +25,26 @@ class PrimeBrute{
              return true;
          return isPrimeRec(n,i+1);
     }
+    // Average of prime number in given range
+    // Time Complexity O((m-n)√m)
+    // Space complexity O(1)
+    public static double avgPrime(int n, int m){
+        int cnt = 0,sum = 0;
+        for(int i = n; i <= m; i++){
+            if(isPrime(i)){
+                sum += i;
+                cnt++;
+            }
+        }
+        double avg = (double)sum / cnt;
+        return avg;
+    }
+
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
         int n = sc.nextInt();
         boolean is = isPrime(n);
+
         if(is){
             System.out.println("Prime");
         }else{
@@ -40,5 +56,10 @@ class PrimeBrute{
         }else{
             System.out.println("Non Prime");
         }
+        int s = sc.nextInt();
+        int e = sc.nextInt();
+        double avg = avgPrime(s,e);
+        System.out.printf("Average :%.2f", avg);
+
     }
 }
