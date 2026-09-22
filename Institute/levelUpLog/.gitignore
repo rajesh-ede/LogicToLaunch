@@ -1,0 +1,5 @@
+# Java
+*.class
+
+# IntelliJ IDEA
+.idea/workspace.xml
