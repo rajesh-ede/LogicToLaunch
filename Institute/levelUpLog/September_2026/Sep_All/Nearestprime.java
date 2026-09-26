@@ -60,7 +60,7 @@ class Nearestprime{
             }
 
             if (ap) {
-                System.out.println("The nearest is : " + after);
+                System.out.println("The nearest is nn: " + after);
                 return;
             }
         }
