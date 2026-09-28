@@ -1,5 +1,6 @@
 import java.util.*;
 
+// An Armstrong number is a number where the sum of each digit raised to the power of the number of digits equals the original number.
 class Amstrong{
 
     //Time Complexity: O(R × d)
