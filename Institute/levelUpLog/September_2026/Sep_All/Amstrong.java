@@ -7,7 +7,7 @@ class Amstrong{
     static void range(int n, int m){
         int sum = 0;
         int cnt = 0;
-        System.out.print("Armstrong number is range "+ n +"&" +m" : ");
+        System.out.print("Armstrong number is range "+ n +"&" +m+" : ");
         for(int i = n; i <= m; i++){
             if(isAmng(i)){
                 System.out.print(i+" ");
@@ -48,16 +48,22 @@ class Amstrong{
         return false;
     }
     static void altPrint(int n, int m){
+        int sum = 0;
+        int cnt = 0;
         boolean alt = true;
         System.out.print("Alternative Armstrong number : " );
         for(int i = n; i <= m; i++){
             if(isAmng(i)){
               if(alt){
+                  sum += i;
+                  cnt++;
                   System.out.print(i + " ");
               }
               alt = !alt;
             }
         }
+        double avg = (double) sum / cnt;
+        System.out.println("Average of alternative Armstrong number : "+avg);
         System.out.println();
     }
     public static void main(String[] args) {
