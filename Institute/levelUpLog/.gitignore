@@ -3,3 +3,4 @@
 
 # IntelliJ IDEA
 .idea/workspace.xml
+git rm -r --cached levelUpLog/Drawing

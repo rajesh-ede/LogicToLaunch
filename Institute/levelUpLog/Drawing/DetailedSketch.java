@@ -1,67 +1,33 @@
+import org.opencv.core.*;
+import org.opencv.imgcodecs.Imgcodecs;
+import org.opencv.imgproc.Imgproc;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import javax.imageio.ImageIO;
-import java.io.File;
+import java.awt.image.DataBufferByte;
 
-public class DrawingAnimation extends JPanel {
+public class DetailedSketch extends JPanel {
 
-    private BufferedImage outline;
+    private BufferedImage sketch;
     private int currentY = 0;
 
-    public DrawingAnimation() {
+    static {
+        System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+    }
 
-        try {
-            BufferedImage original =
-                    ImageIO.read(new File("hardik.png"));
+    public DetailedSketch() {
 
-            int width = original.getWidth();
-            int height = original.getHeight();
-
-            outline = new BufferedImage(
-                    width,
-                    height,
-                    BufferedImage.TYPE_INT_RGB
-            );
-
-            // White background
-            Graphics2D g = outline.createGraphics();
-            g.setColor(Color.WHITE);
-            g.fillRect(0, 0, width, height);
-            g.dispose();
-
-            // Convert image to outline
-            for (int y = 1; y < height - 1; y++) {
-
-                for (int x = 1; x < width - 1; x++) {
-
-                    int center = gray(original.getRGB(x, y));
-
-                    int right = gray(original.getRGB(x + 1, y));
-                    int bottom = gray(original.getRGB(x, y + 1));
-
-                    int difference =
-                            Math.abs(center - right)
-                                    + Math.abs(center - bottom);
-
-                    if (difference > 40) {
-                        outline.setRGB(x, y, Color.BLACK.getRGB());
-                    }
-                }
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        sketch = createSketch("hardik.png");
 
         // Animation
-        Timer timer = new Timer(5, e -> {
+        Timer timer = new Timer(8, e -> {
 
             currentY += 3;
 
-            if (currentY >= outline.getHeight()) {
-                currentY = outline.getHeight();
-                ((Timer)e.getSource()).stop();
+            if (currentY >= sketch.getHeight()) {
+                currentY = sketch.getHeight();
+                ((Timer) e.getSource()).stop();
             }
 
             repaint();
@@ -70,14 +36,184 @@ public class DrawingAnimation extends JPanel {
         timer.start();
     }
 
-    // Convert RGB to grayscale
-    private int gray(int rgb) {
+    private BufferedImage createSketch(String filename) {
 
-        int r = (rgb >> 16) & 255;
-        int g = (rgb >> 8) & 255;
-        int b = rgb & 255;
+        // -----------------------------------------
+        // 1. Load image
+        // -----------------------------------------
 
-        return (r + g + b) / 3;
+        Mat original = Imgcodecs.imread(filename);
+
+        if (original.empty()) {
+            throw new RuntimeException(
+                    "Could not find image: " + filename
+            );
+        }
+
+        // -----------------------------------------
+        // 2. Resize for better processing
+        // -----------------------------------------
+
+        Mat image = new Mat();
+
+        Imgproc.resize(
+                original,
+                image,
+                new Size(800, 1100)
+        );
+
+        // -----------------------------------------
+        // 3. Convert to grayscale
+        // -----------------------------------------
+
+        Mat gray = new Mat();
+
+        Imgproc.cvtColor(
+                image,
+                gray,
+                Imgproc.COLOR_BGR2GRAY
+        );
+
+        // -----------------------------------------
+        // 4. Remove small image noise
+        // -----------------------------------------
+
+        Mat smooth = new Mat();
+
+        Imgproc.GaussianBlur(
+                gray,
+                smooth,
+                new Size(5, 5),
+                1.2
+        );
+
+        // -----------------------------------------
+        // 5. Improve contrast
+        // -----------------------------------------
+
+        Mat contrast = new Mat();
+
+        Imgproc.equalizeHist(
+                smooth,
+                contrast
+        );
+
+        // -----------------------------------------
+        // 6. Detect important edges
+        // -----------------------------------------
+
+        Mat edges = new Mat();
+
+        Imgproc.Canny(
+                contrast,
+                edges,
+                45,
+                120
+        );
+
+        // -----------------------------------------
+        // 7. Make lines slightly thinner/cleaner
+        // -----------------------------------------
+
+        Mat kernel = Imgproc.getStructuringElement(
+                Imgproc.MORPH_RECT,
+                new Size(2, 2)
+        );
+
+        Imgproc.morphologyEx(
+                edges,
+                edges,
+                Imgproc.MORPH_OPEN,
+                kernel
+        );
+
+        // -----------------------------------------
+        // 8. Remove tiny isolated dots
+        // -----------------------------------------
+
+        Mat clean = new Mat();
+
+        Imgproc.morphologyEx(
+                edges,
+                clean,
+                Imgproc.MORPH_CLOSE,
+                kernel
+        );
+
+        // -----------------------------------------
+        // 9. White background
+        // -----------------------------------------
+
+        Mat result = new Mat(
+                clean.size(),
+                CvType.CV_8UC1,
+                new Scalar(255)
+        );
+
+        // -----------------------------------------
+        // 10. Put black edges on white
+        // -----------------------------------------
+
+        for (int y = 0; y < clean.rows(); y++) {
+
+            for (int x = 0; x < clean.cols(); x++) {
+
+                double[] pixel =
+                        clean.get(y, x);
+
+                if (pixel != null && pixel[0] > 0) {
+
+                    result.put(
+                            y,
+                            x,
+                            0
+                    );
+                }
+            }
+        }
+
+        // -----------------------------------------
+        // 11. Convert to BufferedImage
+        // -----------------------------------------
+
+        return matToBufferedImage(result);
+    }
+
+    private BufferedImage matToBufferedImage(Mat mat) {
+
+        int type =
+                BufferedImage.TYPE_BYTE_GRAY;
+
+        byte[] data =
+                new byte[
+                        mat.rows() *
+                                mat.cols()
+                        ];
+
+        mat.get(0, 0, data);
+
+        BufferedImage image =
+                new BufferedImage(
+                        mat.cols(),
+                        mat.rows(),
+                        type
+                );
+
+        byte[] target =
+                ((DataBufferByte)
+                        image.getRaster()
+                                .getDataBuffer())
+                        .getData();
+
+        System.arraycopy(
+                data,
+                0,
+                target,
+                0,
+                data.length
+        );
+
+        return image;
     }
 
     @Override
@@ -85,51 +221,58 @@ public class DrawingAnimation extends JPanel {
 
         super.paintComponent(g);
 
-        if (outline == null)
+        if (sketch == null)
             return;
 
-        int width = getWidth();
-        int height = getHeight();
+        int panelWidth = getWidth();
+        int panelHeight = getHeight();
 
         double scaleX =
-                (double) width / outline.getWidth();
+                (double) panelWidth /
+                        sketch.getWidth();
 
         double scaleY =
-                (double) height / outline.getHeight();
+                (double) panelHeight /
+                        sketch.getHeight();
 
         double scale =
                 Math.min(scaleX, scaleY);
 
-        int newWidth =
-                (int)(outline.getWidth() * scale);
+        int width =
+                (int) (sketch.getWidth() * scale);
 
-        int newHeight =
-                (int)(outline.getHeight() * scale);
+        int height =
+                (int) (sketch.getHeight() * scale);
 
         int x =
-                (width - newWidth) / 2;
+                (panelWidth - width) / 2;
 
         int y =
-                (height - newHeight) / 2;
+                (panelHeight - height) / 2;
 
-        // Only show the part that has been "drawn"
+        // Draw only the part already animated
+        int visibleHeight =
+                (int) (
+                        height *
+                                ((double) currentY /
+                                        sketch.getHeight())
+                );
+
         Shape oldClip = g.getClip();
 
         g.setClip(
                 x,
                 y,
-                newWidth,
-                (int)(newHeight *
-                        ((double) currentY /
-                                outline.getHeight()))
+                width,
+                visibleHeight
         );
 
         g.drawImage(
-                outline,
+                sketch,
                 x,
                 y,
-                newWidth,
-                newHeight,
+                width,
+                height,
                 null
         );
 
@@ -139,14 +282,21 @@ public class DrawingAnimation extends JPanel {
     public static void main(String[] args) {
 
         JFrame frame =
-                new JFrame("Hardik - Line Drawing");
-
-        frame.add(new DrawingAnimation());
-
-        frame.setSize(600, 800);
+                new JFrame(
+                        "Detailed Hardik Sketch"
+                );
 
         frame.setDefaultCloseOperation(
                 JFrame.EXIT_ON_CLOSE
+        );
+
+        frame.setSize(
+                700,
+                900
+        );
+
+        frame.add(
+                new DetailedSketch()
         );
 
         frame.setLocationRelativeTo(null);
