@@ -101,8 +101,31 @@ public class Square {
         }
     }
 
+    static void sq11(int n){
+        int c = 1;
+        for(int i = 1; i <= n; i++){       // 1 0 1 0 1 0
+             for(int j = 1; j<= n; j++){   // 1 0 1 0 1 0
+                System.out.print(c + " ");//  1 0 1 0 1 0
+                c = c == 1 ? 0 : 1;       //  1 0 1 0 1 0
+            }
+             System.out.println();
+            c = c ==1 ? 0: 1;
+        }
+    }
+    static  void sq12(int n){
+        int c = 5,cnt = 1;
+        for(int i = 1; i <= n; i++){      // 1*2*3
+            for(int j = 1; j <= c; j++){  // 4*5*6
+                System.out.print(cnt++);  // 7*8*9
+                if(j != c){
+                    System.out.print("*");
+                }
+            }
+            System.out.println();
+        }
+    }
     public static void main(String[] args) {
         int n = 5;
-        sq10(n);
+        sq12(n);
     }
 }
