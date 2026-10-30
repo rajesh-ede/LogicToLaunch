@@ -24,3 +24,4 @@ This repository is not about having perfect code.
 It's about showing up every day and getting better.
 
 **Me vs Me**
+**BE THE BEST**
