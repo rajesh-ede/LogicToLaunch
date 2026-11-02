@@ -45,10 +45,10 @@ public class Rightangle1 {
     static void r6(int n){
         int cnt = 1;
         for(int i = 1; i <= n; i++){               // 1
-            for(int j = 1; j <= i; j++){           // 1 2
-                System.out.print(cnt++ + " ");     // 1 2 3
-            }                                      // 1 2 3 4
-            System.out.println();                  // 1 2 3 4 5
+            for(int j = 1; j <= i; j++){           // 2 3
+                System.out.print(cnt++ + " ");     // 4 5 6
+            }                                      // 7 8 9 10
+            System.out.println();                  // 11 12 13 14 15
         }
     }
     static void r7(int n){
@@ -100,6 +100,6 @@ public class Rightangle1 {
     }
     public static void main(String[] args) {
         int n = 5;
-        r10(n);
+        r6(n);
     }
 }
