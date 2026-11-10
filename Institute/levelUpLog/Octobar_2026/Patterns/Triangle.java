@@ -1,6 +1,6 @@
 package Patterns;
 
-public class Traingle {
+public class Triangle {
     static void p1(int n){
         for(int i = 1; i <= n; i++){
             for(int j=1; j<= n - i; j++){     //     1
@@ -62,10 +62,19 @@ public class Traingle {
         }
     }
     static void p6(int n){
-
+        int cnt = 1;
+       for(int i = 1; i <= n; i++){
+           for(int j = i; j <= n; j++){           //     01
+               System.out.print(" ");             //    02 03
+           }                                      //   04 05 06
+           for(int j = 1; j <= i; j++){           //  07 08 09 10
+               System.out.printf("%02d ",cnt++);  // 11 12 13 14 15
+           }
+          System.out.println();
+       }
     }
     public static void main(String[] args) {
         int n = 5;
-        p5(n);
+        p6(n);
     }
 }

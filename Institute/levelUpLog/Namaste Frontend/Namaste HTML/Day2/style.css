@@ -1,0 +1,16 @@
+
+h1{
+   color: blueviolet;
+   background-color: blanchedalmond;
+}
+.hello{
+    color: darkgreen;
+}
+p{
+    color: gold;
+    padding: 20px;
+}
+img{
+    width: 50%;
+    height: 50%;
+}

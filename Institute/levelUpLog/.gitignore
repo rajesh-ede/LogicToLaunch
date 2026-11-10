@@ -3,4 +3,15 @@
 
 # IntelliJ IDEA
 .idea/workspace.xml
+# IntelliJ IDEA files
+.idea/
+*.iml
+
+# Compiled Java output
+out/
+*.class
+
+# OS files
+.DS_Store
+Thumbs.db
 git rm -r --cached levelUpLog/Drawing

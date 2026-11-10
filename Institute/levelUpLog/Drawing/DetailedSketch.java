@@ -1,3 +1,4 @@
+
 import org.opencv.core.*;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
@@ -6,198 +7,179 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class DetailedSketch extends JPanel {
 
     private BufferedImage sketch;
-    private int currentY = 0;
 
+    private final List<Rectangle> revealedTiles =
+            new ArrayList<>();
+
+    private List<Rectangle> allTiles;
+
+    private Timer timer;
+
+    private static final int TILE_SIZE = 20;
+
+    // Load OpenCV native library
     static {
-        System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+        nu.pattern.OpenCV.loadLocally();
     }
 
     public DetailedSketch() {
 
-        sketch = createSketch("hardik.png");
+        // Change this filename if needed
+        sketch = createSketch("rider_clean.png");
 
-        // Animation
-        Timer timer = new Timer(8, e -> {
+        createRandomTiles();
 
-            currentY += 3;
+        // Random drawing animation
+        timer = new Timer(8, e -> {
 
-            if (currentY >= sketch.getHeight()) {
-                currentY = sketch.getHeight();
-                ((Timer) e.getSource()).stop();
+            int count = 8;
+
+            for (int i = 0; i < count; i++) {
+
+                if (allTiles.isEmpty()) {
+                    break;
+                }
+
+                revealedTiles.add(
+                        allTiles.remove(allTiles.size() - 1)
+                );
             }
 
             repaint();
+
+            if (allTiles.isEmpty()) {
+                timer.stop();
+            }
         });
 
         timer.start();
     }
 
+    // ==========================================
+    // IMAGE PROCESSING
+    // ==========================================
+
     private BufferedImage createSketch(String filename) {
 
-        // -----------------------------------------
-        // 1. Load image
-        // -----------------------------------------
+        File file = new File(filename);
 
-        Mat original = Imgcodecs.imread(filename);
+        System.out.println(
+                "Loading image: " +
+                        file.getAbsolutePath()
+        );
 
-        if (original.empty()) {
+        if (!file.exists()) {
             throw new RuntimeException(
-                    "Could not find image: " + filename
+                    "IMAGE NOT FOUND: " +
+                            file.getAbsolutePath()
             );
         }
 
-        // -----------------------------------------
-        // 2. Resize for better processing
-        // -----------------------------------------
+        Mat original = Imgcodecs.imread(
+                file.getAbsolutePath()
+        );
 
+        if (original.empty()) {
+            throw new RuntimeException(
+                    "Unable to read image!"
+            );
+        }
+
+        // Resize while maintaining aspect ratio
         Mat image = new Mat();
+
+        double scale = Math.min(
+                900.0 / original.cols(),
+                1200.0 / original.rows()
+        );
 
         Imgproc.resize(
                 original,
                 image,
-                new Size(800, 1100)
+                new Size(
+                        original.cols() * scale,
+                        original.rows() * scale
+                ),
+                0,
+                0,
+                Imgproc.INTER_CUBIC
         );
 
-        // -----------------------------------------
-        // 3. Convert to grayscale
-        // -----------------------------------------
+        // ======================================
+        // Improve image details
+        // ======================================
 
-        Mat gray = new Mat();
-
-        Imgproc.cvtColor(
-                image,
-                gray,
-                Imgproc.COLOR_BGR2GRAY
-        );
-
-        // -----------------------------------------
-        // 4. Remove small image noise
-        // -----------------------------------------
-
-        Mat smooth = new Mat();
+        Mat blurred = new Mat();
 
         Imgproc.GaussianBlur(
-                gray,
-                smooth,
-                new Size(5, 5),
-                1.2
+                image,
+                blurred,
+                new Size(0, 0),
+                2
         );
 
-        // -----------------------------------------
-        // 5. Improve contrast
-        // -----------------------------------------
+        Mat sharpened = new Mat();
 
-        Mat contrast = new Mat();
-
-        Imgproc.equalizeHist(
-                smooth,
-                contrast
+        Core.addWeighted(
+                image,
+                1.35,
+                blurred,
+                -0.35,
+                0,
+                sharpened
         );
 
-        // -----------------------------------------
-        // 6. Detect important edges
-        // -----------------------------------------
+        // Slightly improve contrast
+        Mat result = new Mat();
 
-        Mat edges = new Mat();
-
-        Imgproc.Canny(
-                contrast,
-                edges,
-                45,
-                120
+        sharpened.convertTo(
+                result,
+                -1,
+                1.08,
+                2
         );
 
-        // -----------------------------------------
-        // 7. Make lines slightly thinner/cleaner
-        // -----------------------------------------
-
-        Mat kernel = Imgproc.getStructuringElement(
-                Imgproc.MORPH_RECT,
-                new Size(2, 2)
-        );
-
-        Imgproc.morphologyEx(
-                edges,
-                edges,
-                Imgproc.MORPH_OPEN,
-                kernel
-        );
-
-        // -----------------------------------------
-        // 8. Remove tiny isolated dots
-        // -----------------------------------------
-
-        Mat clean = new Mat();
-
-        Imgproc.morphologyEx(
-                edges,
-                clean,
-                Imgproc.MORPH_CLOSE,
-                kernel
-        );
-
-        // -----------------------------------------
-        // 9. White background
-        // -----------------------------------------
-
-        Mat result = new Mat(
-                clean.size(),
-                CvType.CV_8UC1,
-                new Scalar(255)
-        );
-
-        // -----------------------------------------
-        // 10. Put black edges on white
-        // -----------------------------------------
-
-        for (int y = 0; y < clean.rows(); y++) {
-
-            for (int x = 0; x < clean.cols(); x++) {
-
-                double[] pixel =
-                        clean.get(y, x);
-
-                if (pixel != null && pixel[0] > 0) {
-
-                    result.put(
-                            y,
-                            x,
-                            0
-                    );
-                }
-            }
-        }
-
-        // -----------------------------------------
-        // 11. Convert to BufferedImage
-        // -----------------------------------------
-
+        // Convert to Java image
         return matToBufferedImage(result);
     }
 
+    // ==========================================
+    // OPENCV MAT TO JAVA BUFFERED IMAGE
+    // ==========================================
+
     private BufferedImage matToBufferedImage(Mat mat) {
 
-        int type =
-                BufferedImage.TYPE_BYTE_GRAY;
+        int width = mat.cols();
+        int height = mat.rows();
 
-        byte[] data =
-                new byte[
-                        mat.rows() *
-                                mat.cols()
-                        ];
+        int channels = mat.channels();
 
-        mat.get(0, 0, data);
+        if (channels != 3) {
+            throw new RuntimeException(
+                    "Expected a 3-channel color image."
+            );
+        }
 
         BufferedImage image =
                 new BufferedImage(
-                        mat.cols(),
-                        mat.rows(),
-                        type
+                        width,
+                        height,
+                        BufferedImage.TYPE_3BYTE_BGR
                 );
+
+        byte[] data = new byte[
+                width * height * channels
+                ];
+
+        mat.get(0, 0, data);
 
         byte[] target =
                 ((DataBufferByte)
@@ -216,227 +198,129 @@ public class DetailedSketch extends JPanel {
         return image;
     }
 
+    // ==========================================
+    // CREATE RANDOM DRAWING ORDER
+    // ==========================================
+
+    private void createRandomTiles() {
+
+        allTiles = new ArrayList<>();
+
+        int width = sketch.getWidth();
+        int height = sketch.getHeight();
+
+        for (int y = 0; y < height; y += TILE_SIZE) {
+
+            for (int x = 0; x < width; x += TILE_SIZE) {
+
+                int tileWidth = Math.min(
+                        TILE_SIZE,
+                        width - x
+                );
+
+                int tileHeight = Math.min(
+                        TILE_SIZE,
+                        height - y
+                );
+
+                allTiles.add(
+                        new Rectangle(
+                                x,
+                                y,
+                                tileWidth,
+                                tileHeight
+                        )
+                );
+            }
+        }
+
+        // Shuffle tiles for random appearance
+        Collections.shuffle(allTiles);
+    }
+
+    // ==========================================
+    // DISPLAY ANIMATION
+    // ==========================================
+
     @Override
     protected void paintComponent(Graphics g) {
 
         super.paintComponent(g);
 
-        if (sketch == null)
+        if (sketch == null) {
             return;
+        }
 
-        int panelWidth = getWidth();
-        int panelHeight = getHeight();
+        Graphics2D g2 = (Graphics2D) g.create();
 
-        double scaleX =
-                (double) panelWidth /
-                        sketch.getWidth();
-
-        double scaleY =
-                (double) panelHeight /
-                        sketch.getHeight();
-
-        double scale =
-                Math.min(scaleX, scaleY);
-
-        int width =
-                (int) (sketch.getWidth() * scale);
-
-        int height =
-                (int) (sketch.getHeight() * scale);
-
-        int x =
-                (panelWidth - width) / 2;
-
-        int y =
-                (panelHeight - height) / 2;
-
-        // Draw only the part already animated
-        int visibleHeight =
-                (int) (
-                        height *
-                                ((double) currentY /
-                                        sketch.getHeight())
-                );
-
-        Shape oldClip = g.getClip();
-
-        g.setClip(
-                x,
-                y,
-                width,
-                visibleHeight
+        g2.setColor(Color.WHITE);
+        g2.fillRect(
+                0,
+                0,
+                getWidth(),
+                getHeight()
         );
 
-        g.drawImage(
-                sketch,
-                x,
-                y,
-                width,
-                height,
-                null
+        double scale = Math.min(
+                (double) getWidth() / sketch.getWidth(),
+                (double) getHeight() / sketch.getHeight()
         );
 
-        g.setClip(oldClip);
+        int width = (int) (sketch.getWidth() * scale);
+        int height = (int) (sketch.getHeight() * scale);
+
+        int offsetX = (getWidth() - width) / 2;
+        int offsetY = (getHeight() - height) / 2;
+
+        // Draw only revealed random tiles
+        for (Rectangle tile : revealedTiles) {
+
+            int sx1 = tile.x;
+            int sy1 = tile.y;
+
+            int sx2 = tile.x + tile.width;
+            int sy2 = tile.y + tile.height;
+
+            int dx1 = offsetX + (int) (sx1 * scale);
+            int dy1 = offsetY + (int) (sy1 * scale);
+
+            int dx2 = offsetX + (int) (sx2 * scale);
+            int dy2 = offsetY + (int) (sy2 * scale);
+
+            g2.drawImage(
+                    sketch,
+                    dx1, dy1, dx2, dy2,
+                    sx1, sy1, sx2, sy2,
+                    null
+            );
+        }
+
+        g2.dispose();
     }
+
+    // ==========================================
+    // MAIN METHOD
+    // ==========================================
 
     public static void main(String[] args) {
 
-        JFrame frame =
-                new JFrame(
-                        "Detailed Hardik Sketch"
-                );
+        SwingUtilities.invokeLater(() -> {
 
-        frame.setDefaultCloseOperation(
-                JFrame.EXIT_ON_CLOSE
-        );
+            JFrame frame = new JFrame(
+                    "Color Photo Enhancement"
+            );
 
-        frame.setSize(
-                700,
-                900
-        );
+            frame.setDefaultCloseOperation(
+                    JFrame.EXIT_ON_CLOSE
+            );
 
-        frame.add(
-                new DetailedSketch()
-        );
+            frame.setSize(800, 1000);
 
-        frame.setLocationRelativeTo(null);
+            frame.add(new DetailedSketch());
 
-        frame.setVisible(true);
+            frame.setLocationRelativeTo(null);
+
+            frame.setVisible(true);
+        });
     }
 }
-
-
-//import javax.swing.*;
-//import java.awt.*;
-//import java.awt.image.BufferedImage;
-//import javax.imageio.ImageIO;
-//import java.io.File;
-//
-//public class DrawingAnimation extends JPanel {
-//
-//    private BufferedImage original;
-//    private BufferedImage drawing;
-//
-//    private int currentPixel = 0;
-//
-//    public DrawingAnimation() {
-//
-//        try {
-//            // Read your Hardik image
-//            original = ImageIO.read(new File("hardik.png"));
-//
-//            // Create blank canvas
-//            drawing = new BufferedImage(
-//                    original.getWidth(),
-//                    original.getHeight(),
-//                    BufferedImage.TYPE_INT_RGB
-//            );
-//
-//            Graphics2D g = drawing.createGraphics();
-//            g.setColor(Color.WHITE);
-//            g.fillRect(
-//                    0,
-//                    0,
-//                    drawing.getWidth(),
-//                    drawing.getHeight()
-//            );
-//            g.dispose();
-//
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//
-//        // Animation
-//        Timer timer = new Timer(1, e -> {
-//
-//            int width = original.getWidth();
-//            int height = original.getHeight();
-//
-//            // Draw 500 pixels every frame
-//            for (int i = 0; i < 500; i++) {
-//
-//                if (currentPixel >= width * height) {
-//                    ((Timer)e.getSource()).stop();
-//                    break;
-//                }
-//
-//                int x = currentPixel % width;
-//                int y = currentPixel / width;
-//
-//                int pixel = original.getRGB(x, y);
-//
-//                drawing.setRGB(x, y, pixel);
-//
-//                currentPixel++;
-//            }
-//
-//            repaint();
-//        });
-//
-//        timer.start();
-//    }
-//
-//    @Override
-//    protected void paintComponent(Graphics g) {
-//
-//        super.paintComponent(g);
-//
-//        if (drawing != null) {
-//
-//            // Keep the image's proportions
-//            int panelWidth = getWidth();
-//            int panelHeight = getHeight();
-//
-//            double scaleX =
-//                    (double) panelWidth / drawing.getWidth();
-//
-//            double scaleY =
-//                    (double) panelHeight / drawing.getHeight();
-//
-//            double scale =
-//                    Math.min(scaleX, scaleY);
-//
-//            int newWidth =
-//                    (int)(drawing.getWidth() * scale);
-//
-//            int newHeight =
-//                    (int)(drawing.getHeight() * scale);
-//
-//            int x =
-//                    (panelWidth - newWidth) / 2;
-//
-//            int y =
-//                    (panelHeight - newHeight) / 2;
-//
-//            g.drawImage(
-//                    drawing,
-//                    x,
-//                    y,
-//                    newWidth,
-//                    newHeight,
-//                    null
-//            );
-//        }
-//    }
-//
-//    public static void main(String[] args) {
-//
-//        JFrame frame =
-//                new JFrame("Hardik Pandya Drawing");
-//
-//        DrawingAnimation panel =
-//                new DrawingAnimation();
-//
-//        frame.add(panel);
-//
-//        frame.setSize(600, 800);
-//
-//        frame.setDefaultCloseOperation(
-//                JFrame.EXIT_ON_CLOSE
-//        );
-//
-//        frame.setLocationRelativeTo(null);
-//
-//        frame.setVisible(true);
-//    }
-//}
