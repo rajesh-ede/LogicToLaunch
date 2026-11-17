@@ -1,0 +1,48 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+
+    font-family: sans-serif;
+}
+
+.navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 20px;
+
+    background-color: whitesmoke;
+}
+
+.navbar a {
+    text-decoration: none;
+    color: black;
+    padding: 10px 30px;
+}
+
+.hero {
+    height: 90vh;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background-image: url('https://blog.hostdime.in/wp-content/uploads/2017/06/kali.png');
+    background-repeat: no-repeat;
+    background-size: cover;
+
+    color: white;
+}
+
+.projects {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+}
+
+.projects img {
+    width: 100%;
+}
