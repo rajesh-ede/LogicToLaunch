@@ -78,7 +78,7 @@ public class Number {
      //count the fibonacci numbers in given range
       static int cntFib(int n, int s, int e){
 
-        int f = fib(n-1);
+        int f = fib(n);
         if(f > e)
             return 0;
         if(f >= s)
