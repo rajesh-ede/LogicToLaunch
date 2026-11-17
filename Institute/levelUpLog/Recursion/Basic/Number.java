@@ -86,15 +86,23 @@ public class Number {
 
           return cntFib(n+1,s,e);
       }
+
+      // sum of factorial of numbers in given range
+    static int sumFact(int n, int m){
+        if(n > m)
+            return 0;
+        return  factorial(n)+sumFact(n+1,m);
+    }
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
         int n = sc.nextInt();
         int s = sc.nextInt();
         int e = sc.nextInt();
-//       int res = factorial(n);
-//       System.out.println(res);
-//       boolean ans = isPrime(n,2);
-//       System.out.print(ans);
+        System.out.print(sumFact(s,e));
+        int res = factorial(n);
+        System.out.println(res);
+        boolean ans = isPrime(n,2);
+        System.out.print(ans);
 
         System.out.print(cntFib(n,s,e));
 
